@@ -13,6 +13,15 @@ $Win32::GuiTest::debug = 0;    # Set to "1" to enable debug output.
 ## Variables/Constants
 my $fgWindow = 0;              # Foreground Window
 
+## Functions
+# From https://stackoverflow.com/questions/31262739/difference-between-chomp-and-trim-in-perl
+sub trim($) {
+    my $string = shift;
+    $string =~ s/^\s+//;
+    $string =~ s/\s+$//;
+    return $string;
+}
+
 ## Main/Core
 # Open calculator
 system('"C:\Windows\System32\calc.exe"');
@@ -34,27 +43,15 @@ open( my $expectedResultsFile, '<:encoding(UTF-8)', $expectedResultsFileName )
   or die "Could not open file '$expectedResultsFileName' $!";
 
 my $index      = 1;
+my $testType   = 0;    # 0 - Calculate the diff, 1 - Add or sub days
 my $resultType = 0;    # 0 - None, 1 - Diff All, 2 - Diff Days
-my $result = "";
+my $result     = "";
+my @expectedLines = <$expectedResultsFile>;
 
 while ( my $row = <$inputFile> ) {
     $resultType = 0;
 
-    # Reset Date Screen - BeforeEach
-    # Ctrl + F4 to change to basic
-    SendKeys('^{F4}');
-    sleep(1);
-
-    # Ctrl + E to change to date calc
-    SendKeys('^e');
-    sleep(1);
-
-    #TAB to move to choose date mode
-    SendKeys('{TAB}');
-    select( undef, undef, undef, 1 );
-
     print "Test Case ", $index, ": ";
-    $index++;
 
     # Input Test Params
     chomp $row;
@@ -63,61 +60,119 @@ while ( my $row = <$inputFile> ) {
         if ( $char eq '#' ) {
             last;
         }
-        if ( $char eq ' ' ) {
-        }
-        elsif ( $char eq 'R' ) {
-            SendKeys('{RIG}');    # Right
-            select( undef, undef, undef, 1 );
-            print "/";
-        }
-        elsif ( $char eq 'T' ) {
+        if ( $char eq 'C' ) {
+
+            # Calculate the difference between two dates
+            $testType = 0;
+
+            # Reset Date Screen - BeforeEach
+            # Ctrl + F4 to change to basic
+            SendKeys('^{F4}');
+            sleep(1);
+
+            # Ctrl + E to change to date calc
+            SendKeys('^e');
+            sleep(1);
+
+            # UP to make sure we are on the correct option
+            SendKeys('{UP}');
+            sleep(1);
+
+            #TAB to move to choose date mode
             SendKeys('{TAB}');
-            select( undef, undef, undef, 1 );
-            print " -> ";
+            sleep(1);
+
+            next;
         }
-        elsif ( $char eq 'E' ) {
-            SendKeys('{ENT}');    # Enter
-            select( undef, undef, undef, 1 );
-            print " CALC \n";
-            @hwnds = GetChildWindows(@arr);
-            for (@hwnds) {
-                my $text = WMGetText($_);
-                if ( $text ne '' ) {
-                    if ( $text eq 'Difference (years, months, weeks, days)' ) {
-                        $resultType = 1;
-                    }
-                    elsif ( $text eq 'Difference (days)' ) {
-                        $resultType = 2;
-                    }
-                    elsif ( $resultType eq 1 ) {
-                        print "Difference All: ", $text, "\n";
-                        $result = $text . " - ";
-                        $resultType = 0;
-                    }
-                    elsif ( $resultType eq 2 ) {
-                        print "Difference Days: ", $text, "\n";
-                        $result = $result . $text;
-                        $resultType = 0;
+        elsif ( $char eq 'A' ) {
+
+            # Add or subtracts days to a specified date
+            $testType = 1;
+
+            # Reset Date Screen - BeforeEach
+            # Ctrl + F4 to change to basic
+            SendKeys('^{F4}');
+            sleep(1);
+
+            # Ctrl + E to change to date calc
+            SendKeys('^e');
+            sleep(1);
+
+            # DOWN to make sure we are on the correct option
+            SendKeys('{DOWN}');
+            sleep(1);
+
+            #TAB to move to choose date mode
+            SendKeys('{TAB}');
+            sleep(1);
+            next;
+        }
+        if ( $testType eq 0 ) {
+            if ( $char eq ' ' ) {
+            }
+            elsif ( $char eq 'R' ) {
+                SendKeys('{RIG}');    # Right
+                select( undef, undef, undef, 1 );
+                print "/";
+            }
+            elsif ( $char eq 'T' ) {
+                SendKeys('{TAB}');
+                select( undef, undef, undef, 1 );
+                print " -> ";
+            }
+            elsif ( $char eq 'E' ) {
+                SendKeys('{ENT}');    # Enter
+                select( undef, undef, undef, 1 );
+                print " CALC \n";
+
+                # Get Output from Window
+                @hwnds = GetChildWindows(@arr);
+                for (@hwnds) {
+                    my $text = WMGetText($_);
+                    if ( $text ne '' ) {
+                        if (
+                            $text eq 'Difference (years, months, weeks, days)' )
+                        {
+                            $resultType = 1;
+                        }
+                        elsif ( $text eq 'Difference (days)' ) {
+                            $resultType = 2;
+                        }
+                        elsif ( $resultType eq 1 ) {
+                            $result     = $text . " - ";
+                            $resultType = 0;
+                        }
+                        elsif ( $resultType eq 2 ) {
+                            $result     = trim( $result . $text );
+                            $resultType = 0;
+                        }
                     }
                 }
+
+                # Assert against Expected Results
+                my $lineIndex       = $index - 1;
+                my $currentExpected = trim( $expectedLines[$lineIndex] );
+                if ( $result eq $currentExpected ) {
+                    print "PASSED: Id-", $index, " Result: ", $result,
+                      " matches Expected: ", $currentExpected, "\n";
+                }
+                else {
+                    print "FAILED: Id-", $index, " Result: ", $result,
+                      " doesn't match Expected: ", $currentExpected, "\n";
+                }
             }
-            # Need to check if result = the correct line in expectedResultsFile
-            # This can be done using something like:
-            # expectedLines = <$expectedResultsFile>
-            # lineResult = $expectedLines[$index-1]
-            # https://docstore.mik.ua/orelly/perl4/cook/ch08_09.htm
-            print "Result: ", $result, "\n"
+            else {
+                SendKeys("{$char}");
+                print $char;
+            }
         }
-        else {
-            SendKeys("{$char}");
-            print $char;
+        elsif ( $testType eq 1 ) {
+            # Need to finish this :)
+            print "Lets do test 2\n";
         }
     }
+    $index++;
 
-    # Get Output from Window
-    # TODO
-    # Assert against Expected Results
-    # TODO
 }
 
 # Close the calculator
