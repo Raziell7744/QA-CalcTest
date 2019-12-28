@@ -19,36 +19,35 @@ system('"C:\Windows\System32\calc.exe"');
 sleep(1);
 
 # Focus to calculator window
-#my@arr;
-#@arr=FindWindowLike(undef,'Calculator');
-#SetForegroundWindow($arr[0]);
-#SetFocus($arr[0]);
+my @arr;
+my @hwnds;
+@arr = FindWindowLike( undef, 'Calculator' );
 
-# Reading from data file
-my $datafile = '.\input.txt';
-open( my $df, '<:encoding(UTF-8)', $datafile )
-  or die "Could not open file '$datafile' $!";
+# Reading from input file
+my $inputFileName = '.\input.txt';
+open( my $inputFile, '<:encoding(UTF-8)', $inputFileName )
+  or die "Could not open file '$inputFileName' $!";
 
-my $index = 1;
+# Reading from expected results file
+my $expectedResultsFileName = '.\expectedResults.txt';
+open( my $expectedResultsFile, '<:encoding(UTF-8)', $expectedResultsFileName )
+  or die "Could not open file '$expectedResultsFileName' $!";
 
-while ( my $row = <$df> ) {
+my $index      = 1;
+my $resultType = 0;    # 0 - None, 1 - Diff All, 2 - Diff Days
+my $result = "";
+
+while ( my $row = <$inputFile> ) {
+    $resultType = 0;
 
     # Reset Date Screen - BeforeEach
-    # Alt -> V -> B to change to basic
-    SendRawKey( VK_LMENU, KEYEVENTF_EXTENDEDKEY );
-    SendRawKey( VK_LMENU, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP );
-    select( undef, undef, undef, 1 );
-    SendKeys('v');
-    select( undef, undef, undef, 1 );
-    SendKeys('b');
-    select( undef, undef, undef, 1 );
+    # Ctrl + F4 to change to basic
+    SendKeys('^{F4}');
+    sleep(1);
 
     # Ctrl + E to change to date calc
-    SendRawKey( VK_LCONTROL, KEYEVENTF_EXTENDEDKEY );
-    select( undef, undef, undef, 0.33 );
-    SendKeys('e');
-    select( undef, undef, undef, 0.27 );
-    SendRawKey( VK_LCONTROL, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP );
+    SendKeys('^e');
+    sleep(1);
 
     #TAB to move to choose date mode
     SendKeys('{TAB}');
@@ -59,7 +58,11 @@ while ( my $row = <$df> ) {
 
     # Input Test Params
     chomp $row;
+
     for my $char ( split //, $row ) {
+        if ( $char eq '#' ) {
+            last;
+        }
         if ( $char eq ' ' ) {
         }
         elsif ( $char eq 'R' ) {
@@ -76,6 +79,34 @@ while ( my $row = <$df> ) {
             SendKeys('{ENT}');    # Enter
             select( undef, undef, undef, 1 );
             print " CALC \n";
+            @hwnds = GetChildWindows(@arr);
+            for (@hwnds) {
+                my $text = WMGetText($_);
+                if ( $text ne '' ) {
+                    if ( $text eq 'Difference (years, months, weeks, days)' ) {
+                        $resultType = 1;
+                    }
+                    elsif ( $text eq 'Difference (days)' ) {
+                        $resultType = 2;
+                    }
+                    elsif ( $resultType eq 1 ) {
+                        print "Difference All: ", $text, "\n";
+                        $result = $text . " - ";
+                        $resultType = 0;
+                    }
+                    elsif ( $resultType eq 2 ) {
+                        print "Difference Days: ", $text, "\n";
+                        $result = $result . $text;
+                        $resultType = 0;
+                    }
+                }
+            }
+            # Need to check if $result = the correct line in $expectedResultsFile
+            # This can be done using something like:
+            # @expectedLines = <$expectedResultsFile>
+            # $lineResult = $expectedLines[$index-1]
+            # https://docstore.mik.ua/orelly/perl4/cook/ch08_09.htm
+            print "Result: ", $result, "\n"
         }
         else {
             SendKeys("{$char}");
@@ -89,14 +120,17 @@ while ( my $row = <$df> ) {
     # TODO
 }
 
+# Close the calculator
+SendKeys('%{F4}');
+
 # #reading from data file
-# my $datafile = '.\data.txt';
-# open(my $df, '<:encoding(UTF-8)', $datafile)
-# 	or die "Could not open file '$datafile' $!";
+# my $inputFileName = '.\data.txt';
+# open(my $inputFile, '<:encoding(UTF-8)', $inputFileName)
+# 	or die "Could not open file '$inputFileName' $!";
 
 # #my$char;
 # my $num;
-# while (my $row = <$df>) {
+# while (my $row = <$inputFile>) {
 #  	chomp $row;
 # 	if ($row eq 'calc'){
 # 		SendKeys('{ENT}'); #ENTER
