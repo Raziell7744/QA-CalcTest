@@ -101,10 +101,10 @@ while ( my $row = <$inputFile> ) {
                     }
                 }
             }
-            # Need to check if $result = the correct line in $expectedResultsFile
+            # Need to check if result = the correct line in expectedResultsFile
             # This can be done using something like:
-            # @expectedLines = <$expectedResultsFile>
-            # $lineResult = $expectedLines[$index-1]
+            # expectedLines = <$expectedResultsFile>
+            # lineResult = $expectedLines[$index-1]
             # https://docstore.mik.ua/orelly/perl4/cook/ch08_09.htm
             print "Result: ", $result, "\n"
         }
