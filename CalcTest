@@ -22,6 +22,22 @@ sub trim($) {
     return $string;
 }
 
+sub assert {
+    my $index           = $_[0];
+    my $result          = $_[1];
+    my @expectedLines   = @_;
+    my $lineIndex       = $index + 1;
+    my $currentExpected = trim( $expectedLines[$lineIndex] );
+    if ( $result eq $currentExpected ) {
+        print "PASSED: Id - ", $index, " Result: ", $result,
+          " matches Expected: ", $currentExpected, "\n";
+    }
+    else {
+        print "FAILED: Id - ", $index, " Result: ", $result,
+          " doesn't match Expected: ", $currentExpected, "\n";
+    }
+}
+
 ## Main/Core
 # Open calculator
 system('"C:\Windows\System32\calc.exe"');
@@ -58,6 +74,7 @@ while ( my $row = <$inputFile> ) {
 
     for my $char ( split //, $row ) {
         if ( $char eq '#' ) {
+            print "SKIPPED \n";
             last;
         }
         if ( $char eq 'C' ) {
@@ -110,19 +127,12 @@ while ( my $row = <$inputFile> ) {
         if ( $testType eq 0 ) {
             if ( $char eq ' ' ) {
             }
-            elsif ( $char eq 'R' ) {
-                SendKeys('{RIG}');    # Right
-                select( undef, undef, undef, 1 );
-                print "/";
-            }
             elsif ( $char eq 'T' ) {
                 SendKeys('{TAB}');
-                select( undef, undef, undef, 1 );
                 print " -> ";
             }
             elsif ( $char eq 'E' ) {
                 SendKeys('{ENT}');    # Enter
-                select( undef, undef, undef, 1 );
                 print " CALC \n";
 
                 # Get Output from Window
@@ -150,16 +160,7 @@ while ( my $row = <$inputFile> ) {
                 }
 
                 # Assert against Expected Results
-                my $lineIndex       = $index - 1;
-                my $currentExpected = trim( $expectedLines[$lineIndex] );
-                if ( $result eq $currentExpected ) {
-                    print "PASSED: Id-", $index, " Result: ", $result,
-                      " matches Expected: ", $currentExpected, "\n";
-                }
-                else {
-                    print "FAILED: Id-", $index, " Result: ", $result,
-                      " doesn't match Expected: ", $currentExpected, "\n";
-                }
+                assert( $index, $result, @expectedLines );
             }
             else {
                 SendKeys("{$char}");
@@ -167,8 +168,64 @@ while ( my $row = <$inputFile> ) {
             }
         }
         elsif ( $testType eq 1 ) {
-            # Need to finish this :)
-            print "Lets do test 2\n";
+            if ( $char eq ' ' ) {
+            }
+            elsif ( $char eq '+' ) {
+                print "Plus";
+            }
+            elsif ( $char eq '-' ) {
+                SendKeys('{RIG}');    # Right
+                select( undef, undef, undef, 1 );
+                print "Minus";
+            }
+            elsif ( $char eq 'T' ) {
+                SendKeys('{TAB}');
+                select( undef, undef, undef, 1 );
+                print " -> ";
+            }
+            elsif ( $char eq 'Y' ) {
+                SendKeys('{TAB}');
+                select( undef, undef, undef, 1 );
+                print " Years-";
+            }
+            elsif ( $char eq 'M' ) {
+                SendKeys('{TAB}');
+                select( undef, undef, undef, 1 );
+                print " Months-";
+            }
+            elsif ( $char eq 'D' ) {
+                SendKeys('{TAB}');
+                select( undef, undef, undef, 1 );
+                print " Days-";
+            }
+            elsif ( $char eq 'E' ) {
+                SendKeys('{ENT}');    # Enter
+                select( undef, undef, undef, 1 );
+                print " CALC \n";
+
+                # Get Output from Window
+                @hwnds = GetChildWindows(@arr);
+                for (@hwnds) {
+                    my $text = WMGetText($_);
+                    if ( $text ne '' ) {
+                        if ( $text eq 'Date' ) {
+                            $resultType = 1;
+                        }
+                        elsif ( $resultType eq 1 ) {
+                            $result     = trim($text);
+                            $resultType = 0;
+                        }
+                    }
+                }
+
+                # Assert against Expected Results
+                assert( $index, $result, @expectedLines );
+
+            }
+            else {
+                SendKeys("{$char}");
+                print $char;
+            }
         }
     }
     $index++;
@@ -177,33 +234,5 @@ while ( my $row = <$inputFile> ) {
 
 # Close the calculator
 SendKeys('%{F4}');
-
-# #reading from data file
-# my $inputFileName = '.\data.txt';
-# open(my $inputFile, '<:encoding(UTF-8)', $inputFileName)
-# 	or die "Could not open file '$inputFileName' $!";
-
-# #my$char;
-# my $num;
-# while (my $row = <$inputFile>) {
-#  	chomp $row;
-# 	if ($row eq 'calc'){
-# 		SendKeys('{ENT}'); #ENTER
-# 		select(undef, undef, undef, 1);
-# 	}
-# 	elsif($row eq 'tab'){
-# 		SendKeys('{TAB}');
-# 		select(undef, undef, undef, 1);
-# 	}
-# 	else
-# 	{
-# 		for my $char (split //, $row) {
-# 			SendKeys("{$char}");
-# 		}
-# 		#moving right
-# 		SendKeys('{RIG}');
-# 		select(undef, undef, undef, 1);
-# 	}
-# }
 
 ## Subroutines
