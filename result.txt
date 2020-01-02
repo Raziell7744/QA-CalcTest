@@ -1,0 +1,14 @@
+Test Case 1: 21/11/2001 -> 13/3/2012 CALC 
+PASSED: Id - 1 Result: 10 years, 3 months, 3 weeks - 3765 days matches Expected: 10 years, 3 months, 3 weeks - 3765 days
+Test Case 2: 21/11/2001 -> 21/11/2001 CALC 
+PASSED: Id - 2 Result: Same dates - Same dates matches Expected: Same dates - Same dates
+Test Case 3: 13/3/2012 -> 21/11/2001 CALC 
+PASSED: Id - 3 Result: 10 years, 3 months, 3 weeks - 3765 days matches Expected: 10 years, 3 months, 3 weeks - 3765 days
+Test Case 4: 20/2/2003 -> Plus Years-1 Months-1 Days-1 CALC 
+PASSED: Id - 4 Result: 21 March 2004 matches Expected: 21 March 2004
+Test Case 5: 20/2/2003 -> Minus Years-1 Months-1 Days-1 CALC 
+PASSED: Id - 5 Result: 19 January 2002 matches Expected: 19 January 2002
+Test Case 6: 20/2/2003 -> Minus Years-x Months-x Days-x CALC 
+PASSED: Id - 6 Result: 19 January 2002 matches Expected: 19 January 2002
+Test passed: 6
+Test failed: 0

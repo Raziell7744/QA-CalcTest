@@ -7,11 +7,12 @@ use warnings;
 
 ## Imports
 use Win32::GuiTest qw/:ALL/;
-
 $Win32::GuiTest::debug = 0;    # Set to "1" to enable debug output.
 
 ## Variables/Constants
 my $fgWindow = 0;              # Foreground Window
+my $testPassed = 0;
+my $testFailed = 0;
 
 ## Functions
 # From https://stackoverflow.com/questions/31262739/difference-between-chomp-and-trim-in-perl
@@ -22,18 +23,38 @@ sub trim($) {
     return $string;
 }
 
+# Reading from input file
+my $inputFileName = '.\input.txt';
+open( my $inputFile, '<:encoding(UTF-8)', $inputFileName )
+  or die "Could not open file '$inputFileName' $!";
+
+# Reading from expected results file
+my $expectedResultsFileName = '.\expectedResults.txt';
+open( my $expectedResultsFile, '<:encoding(UTF-8)', $expectedResultsFileName )
+  or die "Could not open file '$expectedResultsFileName' $!";
+
+# Writing to result file
+my $resultFileName = '.\result.txt';
+open( my $resultFile, '>:encoding(UTF-8)', $resultFileName )
+  or die "Could not open file '$resultFileName' $!";
+
 sub assert {
     my $index           = $_[0];
     my $result          = $_[1];
+    #my $resultFile      = $_[2];
     my @expectedLines   = @_;
     my $lineIndex       = $index + 1;
     my $currentExpected = trim( $expectedLines[$lineIndex] );
     if ( $result eq $currentExpected ) {
-        print "PASSED: Id - ", $index, " Result: ", $result,
+        $testPassed++;
+
+        print $resultFile "PASSED: Id - ", $index, " Result: ", $result,
           " matches Expected: ", $currentExpected, "\n";
     }
     else {
-        print "FAILED: Id - ", $index, " Result: ", $result,
+        $testFailed++;
+
+        print $resultFile "FAILED: Id - ", $index, " Result: ", $result,
           " doesn't match Expected: ", $currentExpected, "\n";
     }
 }
@@ -48,16 +69,6 @@ my @arr;
 my @hwnds;
 @arr = FindWindowLike( undef, 'Calculator' );
 
-# Reading from input file
-my $inputFileName = '.\input.txt';
-open( my $inputFile, '<:encoding(UTF-8)', $inputFileName )
-  or die "Could not open file '$inputFileName' $!";
-
-# Reading from expected results file
-my $expectedResultsFileName = '.\expectedResults.txt';
-open( my $expectedResultsFile, '<:encoding(UTF-8)', $expectedResultsFileName )
-  or die "Could not open file '$expectedResultsFileName' $!";
-
 my $index      = 1;
 my $testType   = 0;    # 0 - Calculate the diff, 1 - Add or sub days
 my $resultType = 0;    # 0 - None, 1 - Diff All, 2 - Diff Days
@@ -67,14 +78,14 @@ my @expectedLines = <$expectedResultsFile>;
 while ( my $row = <$inputFile> ) {
     $resultType = 0;
 
-    print "Test Case ", $index, ": ";
+    print $resultFile "Test Case ", $index, ": ";
 
     # Input Test Params
     chomp $row;
 
     for my $char ( split //, $row ) {
         if ( $char eq '#' ) {
-            print "SKIPPED \n";
+            print $resultFile "SKIPPED \n";
             last;
         }
         if ( $char eq 'C' ) {
@@ -129,11 +140,11 @@ while ( my $row = <$inputFile> ) {
             }
             elsif ( $char eq 'T' ) {
                 SendKeys('{TAB}');
-                print " -> ";
+                print $resultFile " -> ";
             }
             elsif ( $char eq 'E' ) {
                 SendKeys('{ENT}');    # Enter
-                print " CALC \n";
+                print $resultFile " CALC \n";
 
                 # Get Output from Window
                 @hwnds = GetChildWindows(@arr);
@@ -164,44 +175,51 @@ while ( my $row = <$inputFile> ) {
             }
             else {
                 SendKeys("{$char}");
-                print $char;
+                print $resultFile $char;
             }
         }
         elsif ( $testType eq 1 ) {
             if ( $char eq ' ' ) {
             }
             elsif ( $char eq '+' ) {
-                print "Plus";
+                print $resultFile "Plus";
             }
             elsif ( $char eq '-' ) {
                 SendKeys('{RIG}');    # Right
                 select( undef, undef, undef, 1 );
-                print "Minus";
+                print $resultFile "Minus";
             }
             elsif ( $char eq 'T' ) {
                 SendKeys('{TAB}');
                 select( undef, undef, undef, 1 );
-                print " -> ";
+                print $resultFile " -> ";
             }
             elsif ( $char eq 'Y' ) {
                 SendKeys('{TAB}');
                 select( undef, undef, undef, 1 );
-                print " Years-";
+                print $resultFile " Years-";
             }
             elsif ( $char eq 'M' ) {
                 SendKeys('{TAB}');
                 select( undef, undef, undef, 1 );
-                print " Months-";
+                print $resultFile " Months-";
             }
             elsif ( $char eq 'D' ) {
                 SendKeys('{TAB}');
                 select( undef, undef, undef, 1 );
-                print " Days-";
+                print $resultFile " Days-";
+            }
+            elsif ( $char eq 'x' ) {
+                SendKeys("{$char}"); 
+                print $resultFile $char;
+
+                #x is a char input instead of a number. we expect error a message
+                #and the last input to be unchanged
             }
             elsif ( $char eq 'E' ) {
                 SendKeys('{ENT}');    # Enter
                 select( undef, undef, undef, 1 );
-                print " CALC \n";
+                print $resultFile " CALC \n";
 
                 # Get Output from Window
                 @hwnds = GetChildWindows(@arr);
@@ -224,14 +242,15 @@ while ( my $row = <$inputFile> ) {
             }
             else {
                 SendKeys("{$char}");
-                print $char;
+                print $resultFile $char;
             }
         }
     }
     $index++;
-
 }
 
+print $resultFile "Test passed: ", $testPassed, "\n";
+print $resultFile "Test failed: ", $testFailed;
 # Close the calculator
 SendKeys('%{F4}');
 
